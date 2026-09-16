@@ -7,7 +7,6 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
-import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 import org.eclipse.angus.mail.smtp.SMTPTransport;
 
 import java.io.UnsupportedEncodingException;
@@ -15,6 +14,7 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
+import pl.hellopoland.exception.email.PasswordChangedEmailException;
 
 @LocalBean
 @Stateless
@@ -47,6 +47,33 @@ public class EmailService extends ServiceSuperclass {
     sendEmail(parameterObject, senderName, true);
   }
 
+  public void sendPasswordChangedEmail(String login, String password) {
+    String helpdesk = StringUtils.trimToNull(
+        System.getProperty("mail.partner.credentials.recipient"));
+    try {
+      if (helpdesk == null) {
+        throw new MessagingException("Missing mail.partner.credentials.recipient");
+      }
+      sendEmail(new Email(login, helpdesk, "Zmiana danych logowania - Hello Poland",
+          "Dane logowania zostały zmienione.\nLogin: " + login + "\nHasło: " + password),
+          "Hello Poland");
+    } catch (MessagingException | UnsupportedEncodingException e) {
+      logger.log(Level.ERROR, "Password change email failed for login: " + login, e);
+      throw new PasswordChangedEmailException();
+    }
+  }
+
+  void setRecipients(MimeMessage message, Email email) throws MessagingException {
+    String recipient = redirectRecipientIfConfigured(email.recipientEmail);
+    message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipient));
+    if (StringUtils.isNotBlank(email.ccEmail)) {
+      String copyRecipient = redirectRecipientIfConfigured(email.ccEmail);
+      if (!recipient.equalsIgnoreCase(copyRecipient)) {
+        message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(copyRecipient));
+      }
+    }
+  }
+
   private void sendEmail(Email parameterObject, String senderName, boolean html)
       throws MessagingException, UnsupportedEncodingException {
     String recipientEmail = redirectRecipientIfConfigured(parameterObject.recipientEmail);
@@ -55,7 +82,7 @@ public class EmailService extends ServiceSuperclass {
       logger.log(Level.INFO, "Email:\n"
           + "To: " + recipientEmail + "\n"
           + "Subject: " + parameterObject.subject + "\n"
-          + "Body: " + parameterObject.msg
+          + "Body: [omitted]"
       );
       return;
     }
@@ -65,7 +92,7 @@ public class EmailService extends ServiceSuperclass {
     try {
       message
           .setFrom(new InternetAddress(System.getProperty(MAIL_USERNAME_PROPERTY), senderName));
-      message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
+      setRecipients(message, parameterObject);
       message.setSubject(parameterObject.subject, "UTF-8");
       var mimeBodyPart = new MimeBodyPart();
       if (html) {
@@ -76,21 +103,13 @@ public class EmailService extends ServiceSuperclass {
       var multipart = new MimeMultipart();
       multipart.addBodyPart(mimeBodyPart);
       message.setContent(multipart);
-      SMTPTransport transport = (SMTPTransport) session.getTransport("smtp");
-      transport.connect();
-      transport.setReportSuccess(true);
-      transport.sendMessage(message, message.getAllRecipients());
-    } catch (SMTPSendFailedException e) {
-      // Message has been sent.
-      logger.log(Level.INFO, e.getLocalizedMessage());
-      for (Address addr : e.getValidSentAddresses()) {
-        logger.log(Level.INFO, "Email has been sent to " + addr);
-      }
-      for (Address addr : e.getValidUnsentAddresses()) {
-        logger.log(Level.INFO, "Email has not been sent to" + addr);
-      }
-      for (Address addr : e.getInvalidAddresses()) {
-        logger.log(Level.INFO, "Email has not been sent to  " + addr);
+      try (SMTPTransport transport = (SMTPTransport) session.getTransport("smtp")) {
+        transport.connect();
+        transport.setReportSuccess(false);
+        transport.sendMessage(message, message.getAllRecipients());
+        for (Address addr : message.getAllRecipients()) {
+          logger.log(Level.INFO, "Email has been sent to " + addr);
+        }
       }
     } catch (MessagingException | UnsupportedEncodingException e) {
       logger.log(System.Logger.Level.ERROR, "Sending an email failed: " + recipientEmail);
@@ -127,7 +146,7 @@ public class EmailService extends ServiceSuperclass {
     return properties;
   }
 
-  private Session createSessionForEmail(Properties properties) {
+  protected Session createSessionForEmail(Properties properties) {
     return Session.getInstance(properties, new Authenticator() {
       @Override
       protected PasswordAuthentication getPasswordAuthentication() {

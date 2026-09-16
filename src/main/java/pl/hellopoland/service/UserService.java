@@ -279,9 +279,9 @@ public class UserService extends ServiceSuperclass {
   public void changePasswordForLoggedPartner(UserAuthDTO userAuthDTO) {
     if (passwordEncoder.matches(userAuthDTO.oldPassword, getLoggedUser().getPassword())) {
       getLoggedUser().changePassword(userAuthDTO.password);
-      Portal hpt = getPortal("Hello Ticket Cloud");
-      HelloTicket ht = new HelloTicket(hpt.getUrl());
+      HelloTicket ht = credentialsHelloTicket();
       ht.changePartnerCredentials(userAuthDTO, getLoggedPartner().getHptToken());
+      emailService.sendPasswordChangedEmail(getLoggedUser().getEmail(), userAuthDTO.password);
     } else {
       throw new ConflictingException("Incorrect old password.");
     }
@@ -289,25 +289,29 @@ public class UserService extends ServiceSuperclass {
 
   public void updatePasswordForUser(User user, String password) {
     user.changePassword(password);
-    Portal hpt = getPortal("Hello Ticket Cloud");
-    HelloTicket ht = new HelloTicket(hpt.getUrl());
-
     var dto = new UserAuthDTO();
     dto.password = password;
     if (user.getPartner() != null) {
-      ht.changePartnerCredentials(dto, user.getPartner().getHptToken());
+      credentialsHelloTicket().changePartnerCredentials(dto, user.getPartner().getHptToken());
     }
+    emailService.sendPasswordChangedEmail(user.getEmail(), password);
   }
 
   public void changePasswordForUsher(long usherId, UserAuthDTO userAuthDTO) {
-    Portal hpt = getPortal("Hello Ticket Cloud");
-    HelloTicket ht = new HelloTicket(hpt.getUrl());
+    HelloTicket ht = credentialsHelloTicket();
+    UserDTO usher = ht.getUsherForPartner(usherId, getLoggedPartner().getHptToken());
     ht.changeUsherPassword(usherId, userAuthDTO, getLoggedPartner().getHptToken());
+    emailService.sendPasswordChangedEmail(usher.email, userAuthDTO.password);
+  }
+
+  protected HelloTicket credentialsHelloTicket() {
+    return new HelloTicket(getPortal("Hello Ticket Cloud").getUrl());
   }
 
   public void changePasswordForLoggedUser(UserAuthDTO userAuthDTO) {
     if (passwordEncoder.matches(userAuthDTO.oldPassword, getLoggedUser().getPassword())) {
       getLoggedUser().changePassword(userAuthDTO.password);
+      emailService.sendPasswordChangedEmail(getLoggedUser().getEmail(), userAuthDTO.password);
     } else {
       throw new ConflictingException("Incorrect old password.");
     }
@@ -495,6 +499,7 @@ public class UserService extends ServiceSuperclass {
     User user = getHelpdeskUserEntity(userId);
     requireCanModifyHelpdeskUser(user);
     user.changePassword(password);
+    emailService.sendPasswordChangedEmail(user.getEmail(), password);
   }
 
   public void deleteHelpdeskUser(long userId) {
@@ -609,12 +614,14 @@ public class UserService extends ServiceSuperclass {
     partnerUserAccessService.requireCanManagePartnerUsers();
     User user = getPartnerPanelUserEntity(userId);
     user.changePassword(dto.password);
+    emailService.sendPasswordChangedEmail(user.getEmail(), dto.password);
   }
 
   public void changePasswordForPartnerUserFromHelpdesk(long partnerId, long userId, String password) {
     User user = getHelpdeskPartnerUserEntity(partnerId, userId);
     if (isPartnerPanelManagedUser(user)) {
       user.changePassword(password);
+      emailService.sendPasswordChangedEmail(user.getEmail(), password);
       return;
     }
     updatePasswordForUser(user, password);
@@ -1104,6 +1111,8 @@ public class UserService extends ServiceSuperclass {
         user.changePassword(newPassword);
         // oznaczenie tokena jako uzyty
         ut.setUsed(true);
+
+        emailService.sendPasswordChangedEmail(user.getEmail(), newPassword);
 
         return true;
     }

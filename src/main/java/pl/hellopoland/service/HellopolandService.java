@@ -71,8 +71,7 @@ public class HellopolandService extends ServiceSuperclass {
     String previousEmail = partner.getEmail();
     email = StringUtils.trim(email).toLowerCase(Locale.ROOT);
     partner.setEmail(email);
-    Portal hpt = getPortal("Hello Ticket Cloud");
-    HelloTicket ht = new HelloTicket(hpt.getUrl());
+    HelloTicket ht = credentialsHelloTicket();
 
     String newPassword = RandomStringUtils.randomAlphanumeric(10);
     UserAuthDTO form = new UserAuthDTO();
@@ -86,13 +85,11 @@ public class HellopolandService extends ServiceSuperclass {
     user.changePassword(newPassword);
     user.setEmail(email);
 
-    try {
-      emailService.sendEmail(new Email(getPartnerCredentialsRecipient(),
-          "Reset konta partnera w Hello Poland.",
-          credentialsEmailBody(partner.getName(), email, newPassword)));
-    } catch (Exception e) {
-      logger.log(System.Logger.Level.ERROR, e.getLocalizedMessage());
-    }
+    emailService.sendPasswordChangedEmail(email, newPassword);
+  }
+
+  protected HelloTicket credentialsHelloTicket() {
+    return new HelloTicket(getPortal("Hello Ticket Cloud").getUrl());
   }
 
   public void synchronizePartnerWithHpt(Partner partner, String previousEmail) {
