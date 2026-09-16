@@ -1,9 +1,11 @@
 package pl.hellopoland.service;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.ejb.LocalBean;
 import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.TypedQuery;
 import pl.hellopoland.bo.*;
 import pl.hellopoland.bo.Order.Status;
@@ -616,20 +618,46 @@ public class OrderService extends ServiceSuperclass {
         });
   }
 
-  public void ack(String hash, String ack, String jws) throws Exception {
+  public boolean ack(String hash, String ack, String jws) throws Exception {
     logger.log(Logger.Level.INFO, "Got ack from TPay");
-    Map<String, String> ackMap = PaymentUtils.queryToMap(ack);
-    boolean success = Boolean.parseBoolean(ackMap.get("tr_status"));
-    if (jwtVerificator.verify(jws, ack)) {
-      Order order = findByHash(hash);
-      if (success) {
-        logger.log(Logger.Level.INFO, "confirming payment");
-        confirm(order);
-      } else {
-        logger.log(Logger.Level.INFO, "payment problem");
-        problem(order);
-      }
+    if (!jwtVerificator.verify(jws, ack)) {
+      return false;
     }
+    Map<String, String> ackMap = PaymentUtils.queryToMap(ack);
+    String status = ackMap.get("tr_status");
+    boolean success = "true".equalsIgnoreCase(status);
+    // Temporary TST diagnostics: selected fields only, after JWS validation.
+    logger.log(Logger.Level.INFO, "TPay notification diagnostic: "
+        + JsonNodeFactory.instance.objectNode()
+            .put("orderHash", hash)
+            .put("tr_crc", ackMap.get("tr_crc"))
+            .put("tr_status", status)
+            .put("tr_id", ackMap.get("tr_id")));
+    if (hash == null || !hash.equals(ackMap.get("tr_crc"))
+        || !(success || "chargeback".equals(status))) {
+      logger.log(Logger.Level.WARNING, "Rejected TPay notification: invalid order reference or status");
+      return false;
+    }
+    Order order = findByHash(hash);
+    // Serialize callbacks and read the latest committed status after acquiring the lock.
+    em.refresh(order, LockModeType.PESSIMISTIC_WRITE);
+    if (order.getTPayPaymentStatement() == null
+        || !order.getTPayPaymentStatement().equals(ackMap.get("tr_id"))) {
+      logger.log(Logger.Level.WARNING, "Rejected TPay notification: transaction mismatch; orderId=" + order.getId());
+      return false;
+    }
+    if (success) {
+      if (order.getStatus() == Status.CONFIRMED) {
+        logger.log(Logger.Level.INFO, "TPay payment already confirmed; orderId=" + order.getId());
+      } else {
+        logger.log(Logger.Level.INFO, "confirming payment; orderId=" + order.getId());
+        confirm(order);
+      }
+    } else if (order.getStatus() != Status.PROBLEM) {
+      logger.log(Logger.Level.INFO, "payment problem; orderId=" + order.getId());
+      problem(order);
+    }
+    return true;
   }
 
     public Order findBySerialNumber(String serialNumber) {

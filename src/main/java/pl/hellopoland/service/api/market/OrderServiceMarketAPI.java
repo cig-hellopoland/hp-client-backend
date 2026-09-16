@@ -3,6 +3,8 @@ package pl.hellopoland.service.api.market;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ejb.Stateless;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
 import jakarta.inject.Inject;
 import pl.hellopoland.bo.Order;
 import pl.hellopoland.bo.Order.Status;
@@ -35,11 +37,14 @@ public class OrderServiceMarketAPI {
   }
 
   @PermitAll
-  public void ack(String hash, String ack, String jws) {
+  @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
+  public boolean ack(String hash, String ack, String jws) {
     try {
-      service.ack(hash, ack, jws);
+      // OrderService owns the transaction: return success only after its commit.
+      return service.ack(hash, ack, jws);
     } catch (Exception e) {
       logger.log(System.Logger.Level.WARNING, "Failed to ack payment", e);
+      return false;
     }
   }
 

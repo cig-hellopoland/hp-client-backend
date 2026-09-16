@@ -37,8 +37,13 @@ public class MarketOrderRestService {
   @POST
   @Path("/{hash}/ackPayment")
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public void ackPayment(@PathParam("hash") String hash, @HeaderParam("x-jws-signature") String jws, String ack) {
-    service.ack(hash, ack, jws);
+  @Produces(MediaType.TEXT_PLAIN)
+  public Response ackPayment(@PathParam("hash") String hash, @HeaderParam("x-jws-signature") String jws, String ack) {
+    boolean accepted = service.ack(hash, ack, jws);
+    return Response.status(accepted ? Response.Status.OK : Response.Status.INTERNAL_SERVER_ERROR)
+        .type(MediaType.TEXT_PLAIN)
+        .entity(accepted ? "TRUE" : "FALSE")
+        .build();
   }
 
 }
