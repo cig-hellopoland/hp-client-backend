@@ -212,10 +212,13 @@ public class SightEventService extends ServiceSuperclass {
     validatePublishedSightEventHasNormalTicket(dto, partner, null);
     List<ImageDTO> gallery = dto.images;
     Portal hpt = getPortal("Hello Ticket Cloud");
-    HelloTicket helloTicket = new HelloTicket(hpt.getUrl());
+    HelloTicket helloTicket = createHelloTicket(hpt);
+    // HelloTicket does not store voivodeship, county or commune. Keep the submitted location.
+    LocationDTO location = dto.location;
     FileDescriptorDTO pdf = dto.pdfAttachment;
     dto.pdfAttachment = null;
     dto = helloTicket.addSightEvent(dto, partner.getHptToken());
+    dto.location = location;
     dto.pdfAttachment = pdf;
     dto.images = gallery;
     dto.defaultLanguage = defLang;
@@ -310,12 +313,14 @@ public class SightEventService extends ServiceSuperclass {
       fetchImagesOriginalById(dto);
       if (bo.getPortal().getType() == Portal.Type.HELLOTICKET_CLOUD_1) {
         Portal hpt = getPortal("Hello Ticket Cloud");
-        HelloTicket helloTicket = new HelloTicket(hpt.getUrl());
+        HelloTicket helloTicket = createHelloTicket(hpt);
         dto.id = bo.getHptId();
+        LocationDTO location = dto.location;
         FileDescriptorDTO pdf = dto.pdfAttachment;
         dto.pdfAttachment = null;
         List<ImageDTO> gallery = dto.images;
         dto = helloTicket.updateSightEvent(dto, partner.getHptToken());
+        dto.location = location;
         dto.images = gallery;
         dto.pdfAttachment = pdf;
       }
@@ -341,6 +346,10 @@ public class SightEventService extends ServiceSuperclass {
       em.flush();
     }
     return translationService.updateEntityLanguageVersion(bo, dto, language);
+  }
+
+  HelloTicket createHelloTicket(Portal portal) {
+    return new HelloTicket(portal.getUrl());
   }
 
   private void validatePublishedSightEventHasNormalTicket(SightEventDTO dto, Partner partner,
