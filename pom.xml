@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>pl.hellopoland</groupId>
 	<artifactId>hellopoland</artifactId>
-	<version>2.0.20.17</version>
+	<version>2.0.20.21</version>
 	<packaging>war</packaging>
 	<name>Hello Poland</name>
 	<description>Hello Poland backend project</description>

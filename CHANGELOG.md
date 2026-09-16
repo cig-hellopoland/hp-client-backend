@@ -6,10 +6,62 @@ w tym pliku. Zmiany przygotowywane do następnego wydania zapisujemy w sekcji
 
 ## Unreleased
 
+## 2.0.20.21 — 2026-09-16
+
+### Naprawiono
+
+- Przywrócono obsługę `tr_status` udanej płatności Tpay niezależnie od wielkości liter:
+  sandboxowe `TRUE` jest akceptowane tak samo jak `true`, zamiast pozostawiać zamówienie
+  w statusie `NEW`; ta sama interpretacja jest używana podczas walidacji i potwierdzania.
+
+### Dodano
+
+- Test regresyjny powiadomienia z `tr_status=TRUE` oraz ponowień ze zmienioną wielkością
+  liter, sprawdzający odpowiedź `TRUE` i jednokrotne potwierdzenie zamówienia.
+
+## 2.0.20.20 — 2026-09-15
+
+### Dodano
+
+- Tymczasowy log diagnostyczny powiadomień Tpay do testów na TST: po poprawnej
+  weryfikacji JWS zapisuje `orderHash`, `tr_crc`, `tr_status` i `tr_id` jako JSON,
+  bez pełnej treści powiadomienia i danych płatnika; reguły walidacji pozostają bez zmian.
+
+## 2.0.20.19 — 2026-09-15
+
+### Naprawiono
+
+- Zmiana loginu partnera w HelpDesku i zmiany hasła użytkownika wysyłają nowe dane
+  na login użytkownika, z kopią DW na `mail.partner.credentials.recipient`.
+- Powiadomienia obejmują zmianę własnego hasła, zmianę przez HelpDesk lub panel
+  partnera oraz zatwierdzony reset hasła przez link.
+- Przekierowanie poczty na TST obejmuje również kopię DW i usuwa duplikat odbiorcy.
+- Błąd SMTP podczas powiadamiania o zmianie danych jest zgłaszany użytkownikowi;
+  treść wiadomości z hasłem nie trafia do logu przy wyłączonym SMTP.
+
+### Dodano
+
+- 17 testów regresyjnych zmian danych logowania, odbiorców wiadomości,
+  kopii DW, przekierowania na TST i błędów wysyłki.
+
+## 2.0.20.18 — 2026-09-14
+
 ### Naprawiono
 
 - Ujednolicono i poprawiono polskie komunikaty błędów zwracane podczas dodawania partnera.
 - Komunikat błędu wysyłki danych dostępowych informuje, że partner nie został utworzony.
+- Endpoint powiadomień Tpay `ackPayment` zwraca teraz `200`, `text/plain` i dokładnie
+  `TRUE` dopiero po poprawnym zakończeniu transakcji bazodanowej; odrzucone powiadomienia
+  i błędy przetwarzania zwracają `500` i `FALSE`.
+- Ponowienia płatności dla zamówienia `CONFIRMED` nie uruchamiają ponownie potwierdzania
+  w systemie biletowym; blokada rekordu i ponowny odczyt statusu zabezpieczają równoczesne powiadomienia.
+- Przed obsługą powiadomienia sprawdzane są podpis JWS, zgodność `tr_crc` z zamówieniem,
+  zgodność `tr_id` z zapisaną transakcją oraz obsługiwany status płatności.
+
+### Dodano
+
+- 14 testów regresyjnych powiadomień Tpay obejmujących odpowiedzi HTTP, ponowienia,
+  walidację oraz błędy systemu biletowego i bazy danych.
 
 ## 2.0.20.17 — 2026-09-02
 
