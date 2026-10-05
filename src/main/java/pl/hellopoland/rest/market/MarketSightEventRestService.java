@@ -103,8 +103,10 @@ public class MarketSightEventRestService {
 
     var config = new SightEventPagedCollectionConfig();
     config.setLanguage(lang);
-    config.setPromotion(1, 2, 3);
+    config.setPromotion(1, 2, 3, 4, 5, 6, 7, 8);
+    config.setPageSize(8);
     config.setOrderColumn("e.promotion, e.id");
+    config.setOrderDirection("asc");
     config.setDateFrom(new Date());
     return service.getList(config);
   }

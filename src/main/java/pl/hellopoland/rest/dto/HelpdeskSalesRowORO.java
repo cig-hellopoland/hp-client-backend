@@ -14,10 +14,14 @@ public class HelpdeskSalesRowORO {
   public String sightEventName;
   public String objectName;
   public Integer ticketPrice;
+  public String ticketName;
+  public Integer ticketQuantity;
+  public Integer orderValue;
 
   public HelpdeskSalesRowORO(Long bookingId, Date purchaseDate, Date eventDate,
       String customerName, String customerEmail, String status, String hash,
-      String sightEventName, String objectName, Integer ticketPrice) {
+      String sightEventName, String objectName, Integer ticketPrice,
+      String ticketName, Integer ticketQuantity, Integer orderValue) {
     this.bookingId = bookingId;
     this.purchaseDate = purchaseDate;
     this.eventDate = eventDate;
@@ -28,5 +32,8 @@ public class HelpdeskSalesRowORO {
     this.sightEventName = sightEventName;
     this.objectName = objectName;
     this.ticketPrice = ticketPrice;
+    this.ticketName = ticketName;
+    this.ticketQuantity = ticketQuantity;
+    this.orderValue = orderValue;
   }
 }

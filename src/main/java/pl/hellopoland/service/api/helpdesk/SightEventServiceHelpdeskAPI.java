@@ -43,6 +43,8 @@ public class SightEventServiceHelpdeskAPI {
   private SightService sightService;
   @Inject
   private HelpdeskAccessService accessService;
+  @Inject
+  private PromotedSightEventService promotedService;
 
 
 
@@ -51,6 +53,21 @@ public class SightEventServiceHelpdeskAPI {
   public PagedCollection<SightEventDTO> list(SightEventPagedCollectionConfig config,
       LanguageVersion language) {
     config.onlyActive();
+    return loadList(config, language);
+  }
+
+  @RolesAllowed({"root", "admin", "salesman", "helpdesk_partner_manager",
+      "helpdesk_content_manager", "helpdesk_support"})
+  public PagedCollection<SightEventDTO> listPromoted(LanguageVersion language) {
+    var config = new SightEventPagedCollectionConfig();
+    config.onlyPromoted();
+    config.setOrderColumn("e.promotion, e.id");
+    config.setOrderDirection("asc");
+    return loadList(config, language);
+  }
+
+  private PagedCollection<SightEventDTO> loadList(SightEventPagedCollectionConfig config,
+      LanguageVersion language) {
     config.setLanguage(language);
     accessService.applySightEventScope(config);
     PagedEntityCollection<SightEvent> bos = service.getList(config);
@@ -77,14 +94,32 @@ public class SightEventServiceHelpdeskAPI {
       "helpdesk_content_manager"})
   public void setPromotion(Long id, Integer promotion) {
     accessService.requireSightEventAccess(service.get(id));
-    service.setSightEventPromotion(id, promotion);
+    promotedService.move(id, promotion);
+  }
+
+  @RolesAllowed({"root", "admin", "salesman", "helpdesk_partner_manager",
+      "helpdesk_content_manager"})
+  public void addPromotion(Long id) {
+    accessService.requireSightEventAccess(service.get(id));
+    promotedService.add(id);
+  }
+
+  @RolesAllowed({"root", "admin", "salesman", "helpdesk_partner_manager",
+      "helpdesk_content_manager"})
+  public void reorderPromotions(List<Long> ids) {
+    if (ids == null || ids.size() > PromotedSightEventService.MAX_OFFERS
+        || ids.stream().anyMatch(id -> id == null)) {
+      throw new ConflictingException("Nieprawidłowa lista promowanych ofert.");
+    }
+    ids.forEach(id -> accessService.requireSightEventAccess(service.get(id)));
+    promotedService.reorder(ids);
   }
 
   @RolesAllowed({"root", "admin", "salesman", "helpdesk_partner_manager",
       "helpdesk_content_manager"})
   public void removePromotion(Long id) {
     accessService.requireSightEventAccess(service.get(id));
-    service.removeSightEventPromotion(id);
+    promotedService.remove(id);
   }
 
   @RolesAllowed({"root", "admin", "salesman", "helpdesk_partner_manager",

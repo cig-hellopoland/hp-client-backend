@@ -6,6 +6,53 @@ w tym pliku. Zmiany przygotowywane do następnego wydania zapisujemy w sekcji
 
 ## Unreleased
 
+- Eksport CSV sprzedaży Partnera i Helpdesku zawiera polski status zamówienia przy każdej pozycji biletu, również dla anulowanych zamówień.
+
+- Raport ostatniej sprzedaży Helpdesku zwraca wartość całego zamówienia po rabatach.
+
+- Raport ostatniej sprzedaży Helpdesku zwraca nazwę biletu i liczbę biletów z pozycji zamówienia.
+
+## 2.0.20.24 — 2026-09-30
+
+### Naprawiono
+
+- Poprawiono składnię HQL pobierania promowanych ofert w Helpdesku; błąd
+  parsera Hibernate blokował odświeżanie listy i przyciski zarządzania promocjami.
+- Dodano testy rzeczywistego parsera Hibernate dla zapytania listy promowanych
+  ofert, również z ograniczeniem dostępu do partnerów, oraz kontrolę wiązania parametrów.
+
+## 2.0.20.23 — 2026-09-30
+
+### Naprawiono
+
+- Dodawanie promowanej oferty dopisuje ją na końcu listy, bez zastępowania
+  innej oferty; backend odrzuca dziewiątą pozycję i bezpiecznie obsługuje ponowienie dodania.
+- Kolejność całej listy jest zapisywana w jednej transakcji, z zachowaniem
+  unikalności pozycji i blokadą równoczesnych zmian; nieaktualna lista jest odrzucana.
+- Usunięcie promocji porządkuje pozostałe pozycje, a stary endpoint pozycji
+  przesuwa ofertę zamiast usuwać promocję innej oferty.
+- Osobna lista promowanych ofert w Helpdesku uwzględnia również nieaktywne
+  oferty i zachowuje dotychczasowe ograniczenia dostępu użytkownika.
+
+### Dodano
+
+- Endpointy dodawania promocji, odczytu listy promowanych ofert i zbiorczego
+  zapisu kolejności oraz testy zachowania listy, limitu ośmiu i nieprawidłowych zmian.
+
+## 2.0.20.22 — 2026-09-28
+
+### Zmieniono
+
+- Rozszerzono zakres pozycji promowanych ofert w Helpdesku z 1–3 do 1–8;
+  wartości spoza zakresu są odrzucane.
+- Endpoint portalu `/market/sight-events/promoted` zwraca do ośmiu ofert
+  w kolejności ustalonej w Helpdesku.
+
+### Dodano
+
+- Trzy testy regresyjne akceptacji pozycji 1–8, odrzucania nieprawidłowych
+  pozycji oraz zakresu i kolejności ofert pobieranych przez portal.
+
 ## 2.0.20.21 — 2026-09-16
 
 ### Naprawiono

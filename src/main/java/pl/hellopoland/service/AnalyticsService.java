@@ -20,6 +20,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Optional;
@@ -47,7 +49,8 @@ public class AnalyticsService extends ServiceSuperclass {
     // csv file header:
     writeCsvRow(csvFile.toPath(), "NR ZAMÓWIENIA", "DATA ZAMÓWIENIA", "ID PARTNERA HP",
         "NAZWA PARTNERA", "AFILIACJA", "WARTOŚĆ", "PROWIZJA", "NAZWA UŻUTKOWNIKA", "TELEON", "ADRES EMAIL", "PLATFORMA",
-        "ZALOGOWANY", "NAZWA OFERTY", "DATA OFERTY", "ILOŚĆ", "NAZWA BILETÓW", "PROMOCJA", "FAKTURA");
+        "ZALOGOWANY", "NAZWA OFERTY", "DATA OFERTY", "ILOŚĆ", "NAZWA BILETÓW", "PROMOCJA", "FAKTURA",
+        "STATUS ZAMÓWIENIA");
 
     var orders = getOrdersInCurrentUserHelpdeskScope(fromDate, toDate, null);
     for (OrderEntry oe : orders) {
@@ -81,10 +84,23 @@ public class AnalyticsService extends ServiceSuperclass {
           String.valueOf(oe.getQuantity()),
           oe.getName(),
           String.valueOf(oe.getDiscount() != null),
-          String.valueOf(Boolean.TRUE.equals(oDetails.getInvoice()))
+          String.valueOf(Boolean.TRUE.equals(oDetails.getInvoice())),
+          getOrderStatusLabel(order.getStatus())
       );
     }
     return csvFile;
+  }
+
+  private String getOrderStatusLabel(Order.Status status) {
+    if (status == null) {
+      return "Nieznany";
+    }
+    return switch (status) {
+      case NEW -> "Nowe";
+      case CONFIRMED -> "Potwierdzone";
+      case PROBLEM -> "Problem";
+      case CANCELLED -> "Anulowane";
+    };
   }
 
   BigDecimal calculateCommission(BigDecimal commissionPercent, OrderEntry oe) {
@@ -155,6 +171,7 @@ public class AnalyticsService extends ServiceSuperclass {
 
     public List<HelpdeskSalesRowORO> getSales(Date fromDate, Date toDate, Long partnerId) {
         var orders = getOrdersInCurrentUserHelpdeskScope(fromDate, toDate, partnerId);
+        Map<Long, Integer> orderValues = new HashMap<>();
 
         return orders.stream()
                 .map(oe -> {
@@ -181,7 +198,11 @@ public class AnalyticsService extends ServiceSuperclass {
                             order.getHash(),
                             sightEvent != null ? sightEvent.getName() : null,
                             sightEvent != null && sightEvent.getSight() != null ? sightEvent.getSight().getName() : null,
-                            oe.getRealPrice()
+                            oe.getRealPrice(),
+                            oe.getName(),
+                            oe.getQuantity(),
+                            orderValues.computeIfAbsent(order.getId(), id -> order.getEntries()
+                                    .stream().mapToInt(OrderSightEntry::getSum).sum())
                     );
                 })
                 .collect(Collectors.toList());

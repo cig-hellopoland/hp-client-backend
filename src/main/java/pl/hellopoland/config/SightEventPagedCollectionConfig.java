@@ -198,6 +198,10 @@ public class SightEventPagedCollectionConfig extends PagedCollectionConfig<Sight
     addCondition("sight", sight, "e.sight=:sight");
   }
 
+  public void onlyPromoted() {
+    addCondition(Map.of(), "e.promotion is not null");
+  }
+
   public void setSightIds(Set<Long> sightIds) {
     if (sightIds == null || sightIds.isEmpty()) {
       addCondition("sightIds", Set.of(-1L), "s.id in (:sightIds)");

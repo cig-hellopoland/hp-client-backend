@@ -13,6 +13,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 
 @RequestScoped
 @Path("/helpdesk/sight-events")
@@ -39,6 +40,27 @@ public class HelpdeskSightEventRestService {
       @HeaderParam("Content-Language") String contentLanguage) {
     return service.list(new SightEventPagedCollectionConfig(),
         RestService.parseLang(contentLanguage));
+  }
+
+  @GET
+  @Path("/promoted")
+  public PagedCollection<SightEventDTO> promoted(
+      @HeaderParam("Content-Language") String contentLanguage) {
+    return service.listPromoted(RestService.parseLang(contentLanguage));
+  }
+
+  @POST
+  @Path("/{id}/promotion")
+  public Response addPromotion(@PathParam("id") Long id) {
+    service.addPromotion(id);
+    return Response.ok().build();
+  }
+
+  @PUT
+  @Path("/promoted/order")
+  public Response reorderPromotions(List<Long> ids) {
+    service.reorderPromotions(ids);
+    return Response.ok().build();
   }
 
   @DELETE
@@ -98,8 +120,8 @@ public class HelpdeskSightEventRestService {
   public Response setPromotion(
       @PathParam("id") Long id,
       @PathParam("value") Integer promotion) {
-    if (promotion.compareTo(1) < 0 || promotion.compareTo(3) > 0) {
-      throw new ConflictingException("The 'value' parameter can be only 1 or 2 or 3.");
+    if (promotion == null || promotion < 1 || promotion > 8) {
+      throw new ConflictingException("The 'value' parameter must be an integer from 1 to 8.");
     }
     service.setPromotion(id, promotion);
     return Response.ok().build();
