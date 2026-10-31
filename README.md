@@ -1,13 +1,17 @@
 # Hello! Poland – Backend (Helpdesk API)
 
-Backend projektu **Hello! Poland** to aplikacja oparta na **Java EE**, udostępniająca interfejs **REST API** wykorzystywany przez frontendy:
+**Dokumentacja techniczna:** [architektura, endpointy, konfiguracja i zależności](docs/technical.md).
+
+Przegląd lokalnych źródeł: **31.10.2026**. [Architektura, konfiguracja i praca nad modułem](docs/development.md) zawiera mapę kodu, zasady testowania i ograniczenia weryfikacji. [Mapa systemu](https://github.com/cig-hellopoland/hellopoland-docs/blob/main/README.md) prowadzi do repozytorium dokumentacji na GitHubie.
+
+Backend projektu **Hello! Poland** to aplikacja oparta na **Jakarta EE 10**, udostępniająca interfejs **REST API** wykorzystywany przez frontendy:
 * **Helpdesk Web**
 * **Partner Web**
 
 Aplikacja jest pakowana jako artefakt `WAR` i uruchamiana na serwerze **WildFly 34** (tryb standalone), najczęściej wewnątrz kontenera **Docker**.
 
 > [!IMPORTANT]
-> Konfiguracja środowiskowa (bazy danych, DMS, URL-e) **nie jest częścią artefaktu** i zawsze musi być dostarczona z zewnątrz.
+> WAR zawiera domyślne zasoby konfiguracyjne i zasoby filtrowane podczas budowania. Ustawienia właściwe dla środowiska wymagają sprawdzenia oraz zewnętrznego pliku nadpisującego; nie zakładamy, że sam WAR wystarczy do uruchomienia na dowolnym środowisku.
 
 ---
 
@@ -15,7 +19,7 @@ Aplikacja jest pakowana jako artefakt `WAR` i uruchamiana na serwerze **WildFly 
 
 | Komponent | Wersja / Technologia |
 | :--- | :--- |
-| **Java (Runtime)** | Java 17 |
+| **Java (Runtime)** | Java 21 — zgodnie z poziomem kompilacji i Dockerfile |
 | **Java (Build-time)** | Java 21 |
 | **Serwer aplikacji** | WildFly 34 |
 | **Baza danych** | PostgreSQL |
@@ -43,7 +47,7 @@ Aby zbudować projekt, Twoje środowisko musi spełniać poniższe wymagania:
 * **Git**
 
 > [!CAUTION]
-> Chociaż runtime WildFly może działać na Javie 17, **proces budowania pliku WAR (kompilacja) bezwzględnie wymaga JDK 21**.
+> Kod jest kompilowany dla **Javy 21**. Dotyczy to również uruchomienia tego WAR-a; lokalny Dockerfile używa WildFly 34 z JDK 21. Stan obrazu na serwerze wymaga osobnego sprawdzenia.
 
 ---
 
@@ -81,7 +85,7 @@ mvn clean package -Dlocal.maven.build.properties=/path/to/maven.build.properties
 
 ### 2. Runtime (Konfiguracja serwera)
 * **Plik:** `local.runtime.properties`
-* **Cechy:** Nie jest częścią WAR, dostarczany z zewnątrz (parametr JVM lub wolumen). Nadpisuje konfigurację w czasie działania.
+* **Cechy:** Plik nadpisujący jest dostarczany z zewnątrz (parametr JVM wskazuje plik, zwykle montowany przez wolumen). Kod najpierw ładuje do właściwości JVM domyślne `runtime.properties` z WAR-a, a następnie plik zewnętrzny. Wartości zewnętrzne mają pierwszeństwo nad wartościami z zasobu.
 * **Uwaga:** Zmiana wymaga restartu, **bez rebuilda WAR**.
 
 **Przykład (WildFly):**
@@ -93,7 +97,7 @@ standalone.sh -Dlocal.runtime.properties=/path/to/local.runtime.properties
 
 ## 🐳 Docker
 
-Obraz Dockera zawiera serwer WildFly, Javę oraz mechanizm deployu. **Nie zawiera konfiguracji, danych ani zasobów DMS.**
+Obraz Dockera zawiera WildFly, Javę i WAR z domyślnymi zasobami konfiguracyjnymi. Zewnętrzny plik nadpisujący oraz dane i zasoby DMS dostarczamy osobno.
 
 ### Przykład uruchomienia:
 ```bash
@@ -149,13 +153,15 @@ Podczas builda generowany jest plik `target/classes/git.properties`, który zawi
 
 ## 📜 Zasady projektu
 
-1.  **Zero hardcode'u:** Konfiguracja środowiskowa nigdy nie jest częścią obrazu Dockera.
-2.  **Uniwersalność:** Ten sam obraz Docker obsługuje TST i PROD.
-3.  **Separacja:** Różnice środowiskowe wynikają wyłącznie z zewnętrznych plików properties.
+1. **Konfiguracja:** Ustawienia środowiska dostarczamy zewnętrznym plikiem; WAR zawiera także domyślne `runtime.properties`.
+2. **Profile:** `tst` i `prod` wpływają na zasoby podczas budowania. Nie zakładamy zamienności artefaktów bez sprawdzenia wynikowej konfiguracji.
+3. **Weryfikacja:** Wersję i konfigurację działającej usługi potwierdzamy osobno; opis repozytorium nie jest potwierdzeniem stanu PROD.
 
 ---
 
 ## 📚 Dokumentacja uzupełniająca
+
+* **Promocje i kody:** [aktualny dokument modułu](docs/promotions.md) — kontrakty, daty ważności, zakres ofert, pule HT, rezerwacje i ograniczenia potwierdzone w lokalnym kodzie 31.10.2026.
 
 * **Wiki projektu:** [Hello! Poland: API](https://wiki.coigdzie.pl/wiki/Hello!_Poland:_API) (Wdrożenia, Środowiska, DMS)
 * **Repozytorium Backend:** [hp-client-backend](https://github.com/cig-hellopoland/hp-client-backend)
