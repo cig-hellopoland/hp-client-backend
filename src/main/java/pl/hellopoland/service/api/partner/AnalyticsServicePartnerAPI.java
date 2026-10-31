@@ -15,7 +15,7 @@ public class AnalyticsServicePartnerAPI {
 
   @RolesAllowed("partner")
   public File getOrdersCsvFile(Date fromDate, Date toDate) {
-    return service.getOrdersCsvFile(fromDate, toDate);
+    return service.getPartnerOrdersCsvFile(fromDate, toDate);
   }
 
     @RolesAllowed("partner")

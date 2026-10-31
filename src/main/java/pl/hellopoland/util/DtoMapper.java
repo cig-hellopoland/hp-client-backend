@@ -41,6 +41,13 @@ public class DtoMapper {
     if (source.blocked != null) {
       target.setBlocked(source.blocked);
     }
+    // Older clients omit this flag: do not erase the stored closure on their updates.
+    if (source.seasonallyClosed != null) {
+      SeasonalClosure.validate(source.seasonallyClosed, source.seasonalClosureFrom, source.seasonalClosureTo);
+      target.setSeasonallyClosed(source.seasonallyClosed);
+      target.setSeasonalClosureFrom(SeasonalClosure.parse(source.seasonalClosureFrom));
+      target.setSeasonalClosureTo(SeasonalClosure.parse(source.seasonalClosureTo));
+    }
     if (source.published != null) {
       target.setPublished(source.published);
     }
@@ -93,6 +100,11 @@ public class DtoMapper {
     dto.score = bo.getScore();
     dto.blocked = bo.isBlocked();
     dto.published = bo.isPublished();
+    dto.seasonallyClosed = bo.isSeasonallyClosed();
+    dto.seasonalClosureFrom = SeasonalClosure.format(bo.getSeasonalClosureFrom());
+    dto.seasonalClosureTo = SeasonalClosure.format(bo.getSeasonalClosureTo());
+    dto.seasonalClosureActive = SeasonalClosure.isActive(bo.isSeasonallyClosed(),
+        bo.getSeasonalClosureFrom(), bo.getSeasonalClosureTo());
     dto.animalsAllowed = bo.isAnimalsAllowed();
     dto.carParkAvailable = bo.isCarParkAvailable();
     dto.foodAndDrinkAvailable = bo.isFoodAndDrinkAvailable();
@@ -164,6 +176,11 @@ public class DtoMapper {
     dto.sightId = bo.getSight() != null ? bo.getSight().getId() : null;
     dto.blocked = bo.isBlocked();
     dto.published = bo.isPublished();
+    dto.seasonallyClosed = bo.isSeasonallyClosed();
+    dto.seasonalClosureFrom = SeasonalClosure.format(bo.getSeasonalClosureFrom());
+    dto.seasonalClosureTo = SeasonalClosure.format(bo.getSeasonalClosureTo());
+    dto.seasonalClosureActive = SeasonalClosure.isActive(bo.isSeasonallyClosed(),
+        bo.getSeasonalClosureFrom(), bo.getSeasonalClosureTo());
     dto.partnerAffiliateCode = partner.getAffiliateCode();
     dto.defaultLanguage = bo.getDefaultLanguage().getLanuage();
     dto.promotion = bo.getPromotion();
@@ -388,6 +405,13 @@ public class DtoMapper {
     }
     if (source.blocked != null) {
       target.setBlocked(source.blocked);
+    }
+    // Older clients omit this flag: do not erase the stored closure on their updates.
+    if (source.seasonallyClosed != null) {
+      SeasonalClosure.validate(source.seasonallyClosed, source.seasonalClosureFrom, source.seasonalClosureTo);
+      target.setSeasonallyClosed(source.seasonallyClosed);
+      target.setSeasonalClosureFrom(SeasonalClosure.parse(source.seasonalClosureFrom));
+      target.setSeasonalClosureTo(SeasonalClosure.parse(source.seasonalClosureTo));
     }
     if (source.published != null) {
       target.setPublished(source.published);

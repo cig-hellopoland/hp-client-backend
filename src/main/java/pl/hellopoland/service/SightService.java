@@ -10,6 +10,7 @@ import pl.hellopoland.exception.conflict.ConflictingException;
 import pl.hellopoland.exception.notfound.ResourceNotFoundException;
 import pl.hellopoland.util.BeanUtils;
 import pl.hellopoland.util.DtoMapper;
+import pl.hellopoland.util.SeasonalClosure;
 import pl.hellopoland.util.PagedEntityCollection;
 
 import jakarta.ejb.LocalBean;
@@ -101,6 +102,7 @@ public class SightService extends ServiceSuperclass {
   }
 
   public Sight create(SightDTO dto, Partner partner) {
+    SeasonalClosure.validate(dto.seasonallyClosed, dto.seasonalClosureFrom, dto.seasonalClosureTo);
     Sight bo = new Sight();
     DtoMapper.copy(dto, bo);
     enrichLocation(bo.getLocation());
@@ -169,6 +171,7 @@ public class SightService extends ServiceSuperclass {
   }
 
   public Sight update(Sight bo, SightDTO dto, LanguageVersion language) {
+    SeasonalClosure.validate(dto.seasonallyClosed, dto.seasonalClosureFrom, dto.seasonalClosureTo);
     if (!translationService.isTranslated(bo, language)) {
       // throw new ConflictingException(
       // "Translation for language " + language.getLanuage() + " doesn't exists");

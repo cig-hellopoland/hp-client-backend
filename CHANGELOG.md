@@ -6,6 +6,18 @@ w tym pliku. Zmiany przygotowywane do następnego wydania zapisujemy w sekcji
 
 ## Unreleased
 
+- Dodano informacyjne zamknięcie sezonowe atrakcji i ofert: przełącznik, opcjonalne daty od/do oraz status aktywności liczony według czasu `Europe/Warsaw`, z uwzględnieniem dnia końcowego. Komunikat nie blokuje sprzedaży biletów.
+- Dodano walidację dat, zachowanie pól zamknięcia przy synchronizacji ofert z Hello Ticket oraz zgodność z klientami, które jeszcze nie przesyłają tych pól.
+- Podniesiono zależność `hellopoland-dto` do `1.3.19`. Przed uruchomieniem backendu należy wykonać migrację `src/main/resources/sql/add_seasonal_closure.sql` dla tabel `sight` i `sightevent`.
+- Dodano testy dat zamknięcia sezonowego i zachowania tych danych podczas tworzenia oraz aktualizacji ofert.
+
+- CSV ze Statystyk sprzedaży ma wspólny układ 12 kolumn od numeru zamówienia do statusu; Partner otrzymuje dokładnie te kolumny, a Helpdesk dodatkowo dotychczasowe pola administracyjne i prowizję na końcu.
+- Dodano cenę brutto jednej sztuki po rabacie i jednoznaczne nagłówki liczby oraz wartości sprzedanych biletów; kwoty zapisujemy z dwoma miejscami po przecinku.
+- CSV zapisujemy jako UTF-8 z BOM dla polskich znaków w Excelu; poprawiono literówki w nagłówkach użytkownika i telefonu.
+
+- Raport CSV Partnera pomija ID i nazwę partnera, afiliację, telefon, platformę, zalogowanie oraz fakturę; Helpdesk zachowuje pełny zestaw kolumn.
+- Raporty CSV pobierane ze Statystyk sprzedaży Partnera i Helpdesku rozpoznają promocję przy konkretnej pozycji na podstawie rabatu lub powiązania z kodem promocyjnym, także dla biletów z ceną promocyjną bez rabatu i zamówień anulowanych.
+
 - Eksport CSV sprzedaży Partnera i Helpdesku zawiera polski status zamówienia przy każdej pozycji biletu, również dla anulowanych zamówień.
 
 - Raport ostatniej sprzedaży Helpdesku zwraca wartość całego zamówienia po rabatach.

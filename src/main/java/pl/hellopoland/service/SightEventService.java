@@ -189,6 +189,7 @@ public class SightEventService extends ServiceSuperclass {
   }
 
   public SightEvent create(SightEventDTO dto, Partner partner) {
+    SeasonalClosure.validate(dto.seasonallyClosed, dto.seasonalClosureFrom, dto.seasonalClosureTo);
     validateSightEventTextLengths(dto);
 
     if (dto.sightId == null) {
@@ -217,7 +218,12 @@ public class SightEventService extends ServiceSuperclass {
     LocationDTO location = dto.location;
     FileDescriptorDTO pdf = dto.pdfAttachment;
     dto.pdfAttachment = null;
+    // These fields belong to HP; Hello Ticket does not return them.
+    SightEventDTO submitted = dto;
     dto = helloTicket.addSightEvent(dto, partner.getHptToken());
+    dto.seasonallyClosed = submitted.seasonallyClosed;
+    dto.seasonalClosureFrom = submitted.seasonalClosureFrom;
+    dto.seasonalClosureTo = submitted.seasonalClosureTo;
     dto.location = location;
     dto.pdfAttachment = pdf;
     dto.images = gallery;
@@ -299,6 +305,7 @@ public class SightEventService extends ServiceSuperclass {
   }
 
   public SightEvent update(SightEvent bo, SightEventDTO dto, LanguageVersion language) {
+    SeasonalClosure.validate(dto.seasonallyClosed, dto.seasonalClosureFrom, dto.seasonalClosureTo);
     validateSightEventTextLengths(dto);
 
     alignPartnerWithSight(bo);
@@ -319,7 +326,12 @@ public class SightEventService extends ServiceSuperclass {
         FileDescriptorDTO pdf = dto.pdfAttachment;
         dto.pdfAttachment = null;
         List<ImageDTO> gallery = dto.images;
+        // These fields belong to HP; Hello Ticket does not return them.
+        SightEventDTO submitted = dto;
         dto = helloTicket.updateSightEvent(dto, partner.getHptToken());
+        dto.seasonallyClosed = submitted.seasonallyClosed;
+        dto.seasonalClosureFrom = submitted.seasonalClosureFrom;
+        dto.seasonalClosureTo = submitted.seasonalClosureTo;
         dto.location = location;
         dto.images = gallery;
         dto.pdfAttachment = pdf;

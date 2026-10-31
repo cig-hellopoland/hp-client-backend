@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,6 +56,12 @@ public class Sight extends ModelSuperclass implements Located, Imaged, Translate
   private Set<Agreement> agreements = new HashSet<>();
   private boolean published;
   private boolean blocked;
+  @Column(name = "seasonally_closed", nullable = false)
+  private boolean seasonallyClosed;
+  @Column(name = "seasonal_closure_from")
+  private LocalDate seasonalClosureFrom;
+  @Column(name = "seasonal_closure_to")
+  private LocalDate seasonalClosureTo;
   @Column(name = "animals_allowed")
   private boolean animalsAllowed; // null w DB -> false po stronie BO
 
@@ -238,6 +245,13 @@ public class Sight extends ModelSuperclass implements Located, Imaged, Translate
   public void setPublished(boolean published) {
     this.published = published;
   }
+
+  public boolean isSeasonallyClosed() { return seasonallyClosed; }
+  public void setSeasonallyClosed(boolean value) { seasonallyClosed = value; }
+  public LocalDate getSeasonalClosureFrom() { return seasonalClosureFrom; }
+  public void setSeasonalClosureFrom(LocalDate value) { seasonalClosureFrom = value; }
+  public LocalDate getSeasonalClosureTo() { return seasonalClosureTo; }
+  public void setSeasonalClosureTo(LocalDate value) { seasonalClosureTo = value; }
 
   public boolean isBlocked() {
     return blocked;

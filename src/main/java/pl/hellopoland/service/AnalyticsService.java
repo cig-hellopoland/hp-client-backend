@@ -16,11 +16,15 @@ import java.lang.System.Logger.Level;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.List;
@@ -44,15 +48,26 @@ public class AnalyticsService extends ServiceSuperclass {
   FileDescriptorService fileDescriptorService;
 
   public File getOrdersCsvFile(Date fromDate, Date toDate) {
+    return getOrdersCsvFile(fromDate, toDate, false);
+  }
+
+  public File getPartnerOrdersCsvFile(Date fromDate, Date toDate) {
+    return getOrdersCsvFile(fromDate, toDate, true);
+  }
+
+  private File getOrdersCsvFile(Date fromDate, Date toDate, boolean partnerReport) {
     final File csvFile = fileDescriptorService.createEmptyFileOnDisc(
         PATH + "orders_" + RandomStringUtils.randomAlphanumeric(10) + ".csv");
     // csv file header:
-    writeCsvRow(csvFile.toPath(), "NR ZAMÓWIENIA", "DATA ZAMÓWIENIA", "ID PARTNERA HP",
-        "NAZWA PARTNERA", "AFILIACJA", "WARTOŚĆ", "PROWIZJA", "NAZWA UŻUTKOWNIKA", "TELEON", "ADRES EMAIL", "PLATFORMA",
-        "ZALOGOWANY", "NAZWA OFERTY", "DATA OFERTY", "ILOŚĆ", "NAZWA BILETÓW", "PROMOCJA", "FAKTURA",
-        "STATUS ZAMÓWIENIA");
+    writeOrdersCsvRow(csvFile.toPath(), partnerReport, "NR ZAMÓWIENIA", "DATA ZAKUPU",
+        "DATA WYDARZENIA", "NAZWA OFERTY", "NAZWA BILETU", "NAZWA UŻYTKOWNIKA",
+        "ADRES EMAIL", "CENA BRUTTO BILETU", "PROMOCJA", "LICZBA SPRZEDANYCH BILETÓW",
+        "WARTOŚĆ SPRZEDANYCH BILETÓW", "STATUS ZAMÓWIENIA",
+        "ID PARTNERA HP", "NAZWA PARTNERA", "AFILIACJA", "PROWIZJA", "TELEFON",
+        "PLATFORMA", "ZALOGOWANY", "FAKTURA");
 
     var orders = getOrdersInCurrentUserHelpdeskScope(fromDate, toDate, null);
+    Set<Long> promotionalEntryIds = getPromotionalEntryIds(orders);
     for (OrderEntry oe : orders) {
       OrderDateEntry dateEntry = oe.getDateEntry();
       OrderSightEntry sightEntry = dateEntry.getSightEntry();
@@ -63,32 +78,61 @@ public class AnalyticsService extends ServiceSuperclass {
       BigDecimal commissionPercent = partner.getCommission();
       Platform platform = oDetails.getPlatform();
       BigDecimal commission = calculateCommission(commissionPercent, oe);
-      BigDecimal total = new BigDecimal(oe.getSum()).divide(HUNDRED);
 
-      writeCsvRow(
+      writeOrdersCsvRow(
           csvFile.toPath(),
+          partnerReport,
           order.getHash(),
           DATE_FORMATER.format(order.getDate()),
+          DATE_FORMATER.format(dateEntry.getDate()),
+          sightEvent.getName(),
+          oe.getName(),
+          oDetails.getFirstName() + " " + oDetails.getLastName(),
+          oDetails.getEmail(),
+          formatTicketAmount(oe.getRealPrice()),
+          isPromotional(oe, promotionalEntryIds) ? "Tak" : "Nie",
+          String.valueOf(oe.getQuantity()),
+          formatTicketAmount(oe.getSum()),
+          getOrderStatusLabel(order.getStatus()),
           String.valueOf(partner.getId()),
           partner.getName(),
           oe.getPartnerAffiliateCode() != null ? "afiliacja" : "",
-          String.valueOf(total).replace(".", ","),
           String.valueOf(commission).replace(".", ","),
-          oDetails.getFirstName() + " " + oDetails.getLastName(),
           oDetails.getPhone(),
-          oDetails.getEmail(),
           platform != null ? platform.name() : Platform.UNKNOWN.name(),
           String.valueOf(oDetails.isUserLogged()),
-          sightEvent.getName(),
-          DATE_FORMATER.format(dateEntry.getDate()),
-          String.valueOf(oe.getQuantity()),
-          oe.getName(),
-          String.valueOf(oe.getDiscount() != null),
-          String.valueOf(Boolean.TRUE.equals(oDetails.getInvoice())),
-          getOrderStatusLabel(order.getStatus())
+          String.valueOf(Boolean.TRUE.equals(oDetails.getInvoice()))
       );
     }
     return csvFile;
+  }
+
+  private void writeOrdersCsvRow(Path path, boolean partnerReport, String... values) {
+    // The first 12 columns are shared; Helpdesk retains its extra fields at the end.
+    writeCsvRow(path, partnerReport ? Arrays.copyOf(values, 12) : values);
+  }
+
+  private String formatTicketAmount(int amountInGrosze) {
+    return BigDecimal.valueOf(amountInGrosze, 2).toPlainString().replace('.', ',');
+  }
+
+  private Set<Long> getPromotionalEntryIds(List<OrderEntry> entries) {
+    List<Long> ids = entries.stream().map(OrderEntry::getId).filter(Objects::nonNull)
+        .distinct().collect(Collectors.toList());
+    Set<Long> promotionalIds = new HashSet<>();
+    for (int start = 0; start < ids.size(); start += 500) {
+      // Retain historical promotion information, including cancelled orders.
+      promotionalIds.addAll(em.createQuery(
+          "select distinct redemption.orderEntry.id from PromotionCodeRedemption redemption "
+              + "where redemption.orderEntry.id in :entryIds", Long.class)
+          .setParameter("entryIds", ids.subList(start, Math.min(start + 500, ids.size())))
+          .getResultList());
+    }
+    return promotionalIds;
+  }
+
+  private boolean isPromotional(OrderEntry entry, Set<Long> promotionalEntryIds) {
+    return entry.getDiscount() != null || promotionalEntryIds.contains(entry.getId());
   }
 
   private String getOrderStatusLabel(Order.Status status) {
@@ -120,9 +164,15 @@ public class AnalyticsService extends ServiceSuperclass {
 
   private void writeCsvRow(Path path, String... strings) {
     try (var writer =
-        Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-      for (String string : strings) {
-        writer.append(string).append(";");
+        Files.newBufferedWriter(path, StandardCharsets.UTF_8,
+            StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+      // Excel uses the BOM to recognize UTF-8 when opening a CSV directly.
+      if (Files.size(path) == 0) {
+        writer.write('\uFEFF');
+      }
+      for (int i = 0; i < strings.length; i++) {
+        if (i > 0) writer.append(';');
+        writer.append(strings[i]);
       }
       writer.newLine();
     } catch (IOException e) {

@@ -173,6 +173,40 @@ public class SightEventLocationTest {
     assertEquals(Long.valueOf(101L), result.hptId);
   }
 
+  @Test
+  public void preservesSeasonalClosureAcrossHelloTicketAndCanClearDates() {
+    SightEventDTO input = draft();
+    input.seasonallyClosed = true;
+    input.seasonalClosureFrom = "2026-11-01";
+    input.seasonalClosureTo = "2027-03-31";
+    SightEvent created = service.create(input, partner);
+    SightEventDTO reopened = DtoMapper.getFullDTO(created);
+    assertEquals(Boolean.TRUE, reopened.seasonallyClosed);
+    assertEquals("2026-11-01", reopened.seasonalClosureFrom);
+    assertEquals("2027-03-31", reopened.seasonalClosureTo);
+    reopened.seasonalClosureFrom = "";
+    reopened.seasonalClosureTo = "";
+    SightEventDTO updated = DtoMapper.getFullDTO(service.update(created, reopened, LanguageVersion.PL_PL));
+    assertEquals(Boolean.TRUE, updated.seasonalClosureActive);
+    assertEquals(null, updated.seasonalClosureFrom);
+    updated.seasonallyClosed = false;
+    assertEquals(Boolean.FALSE, DtoMapper.getFullDTO(service.update(created, updated, LanguageVersion.PL_PL)).seasonalClosureActive);
+  }
+
+  @Test
+  public void rejectsInvalidSeasonBeforeCallingHelloTicket() {
+    SightEventDTO input = draft();
+    input.seasonallyClosed = true;
+    input.seasonalClosureFrom = "2026-11-01";
+    input.seasonalClosureTo = "2026-10-01";
+    try {
+      service.create(input, partner);
+      org.junit.Assert.fail("Expected invalid range to be rejected");
+    } catch (pl.hellopoland.exception.badrequest.BadRequestException expected) {
+      assertEquals(0, creates);
+    }
+  }
+
   private SightEventDTO draft() {
     SightEventDTO dto = new SightEventDTO();
     dto.sightId = sight.getId();
